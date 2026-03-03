@@ -186,11 +186,8 @@ def showcase_datasets() -> None:
     ds_ballroom = AudioDataset(ROOT_BALLROOM, lazy=True)
     print(f"  Size : {len(ds_ballroom)}")
     (y_b, sr_b), genre = ds_ballroom[0]
-    print(
-        f"  ds[0]: duration={
-            librosa.get_duration(
-                y=y_b,
-                sr=sr_b):.1f}s  genre='{genre}'")
+    dur_b = librosa.get_duration(y=y_b, sr=sr_b)
+    print(f"  ds[0]: duration={dur_b:.1f}s  genre='{genre}'")
     train_b, test_b = ds_ballroom.split(0.8)
     print(f"  Split 80/20 -> train={len(train_b)}  test={len(test_b)}")
 
@@ -199,11 +196,8 @@ def showcase_datasets() -> None:
     ds_bpm = AudioDataset(ROOT_WALTZ, lazy=True, labels_file=CSV_BPM)
     print(f"  Size : {len(ds_bpm)}")
     (y_w, sr_w), bpm = ds_bpm[0]
-    print(
-        f"  ds[0]: duration={
-            librosa.get_duration(
-                y=y_w,
-                sr=sr_w):.1f}s  BPM={bpm}")
+    dur_w = librosa.get_duration(y=y_w, sr=sr_w)
+    print(f"  ds[0]: duration={dur_w:.1f}s  BPM={bpm}")
 
     # --- 1h. Unlabeled audio ------------------------------------------------
     print("\n[Audio] BallroomData/Waltz — unlabeled, lazy")
@@ -261,11 +255,8 @@ def showcase_batchloader(ds_img: ImageDataset, ds_audio: AudioDataset) -> None:
     audio_batch = next(iter(bl_audio))
     print(f"  First batch size  : {len(audio_batch)}")
     (y0, sr0), cat0 = audio_batch[0]
-    print(
-        f"  First item        : duration={
-            librosa.get_duration(
-                y=y0,
-                sr=sr0):.1f}s  cat='{cat0}'")
+    dur0 = librosa.get_duration(y=y0, sr=sr0)
+    print(f"  First item        : duration={dur0:.1f}s  cat='{cat0}'")
 
     print("\n[Audio] Random, batch_size=8, drop_last=True")
     bl_audio_rand = BatchLoader(
