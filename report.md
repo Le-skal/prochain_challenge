@@ -127,7 +127,56 @@ If an image is smaller than the target in a given dimension, that dimension is l
 
 ---
 
-## 4. Results
+## 4. Testing
+
+46 tests are provided in `tests/test_all.py`, runnable with `pytest`:
+
+```
+pytest tests/ -v
+# 46 passed in ~10s
+```
+
+Tests are organised by component and use temporary directories with synthetic
+data (small PNG images and WAV files generated on the fly), so no real dataset
+files are required to run them.
+
+| Test class | What is covered |
+|---|---|
+| `TestUtils` | `check_type`, `check_range`, `parse_labels_csv` — correct output and error raising |
+| `TestImageDatasetCSV` | `len`, `__getitem__` shape/type, `split` sizes, no overlap, eager mode, numeric label casting, `IndexError` |
+| `TestImageDatasetFolder` | `len`, labels equal folder names |
+| `TestUnlabeledImageDataset` | `len`, `__getitem__` returns `np.ndarray` |
+| `TestAudioDatasetCSV` | `len`, `__getitem__` types, `split` sizes |
+| `TestAudioDatasetFolder` | `len`, labels equal folder names |
+| `TestUnlabeledAudioDataset` | `__getitem__` returns `(ndarray, int)` |
+| `TestBatchLoader` | `len` with/without `drop_last`, batch sizes, total items, `__len__` consistent with iteration, invalid batch size |
+| `TestPreprocessing` | Output shapes for all 8 transforms + Pipeline, edge cases (no-crop when smaller, short audio unchanged) |
+
+**Refactoring notes:**
+- No duplicate code: image and audio datasets share the same CSV-parsing and label-casting logic via `src/utils.py`.
+- No dead code: every method is exercised either by `main.py` or the test suite.
+- No large classes: the largest class (`ImageDataset`) has 4 methods totalling ~60 lines.
+
+---
+
+## 5. Documentation
+
+HTML documentation is generated from docstrings using **Sphinx** with the
+`autodoc` and `napoleon` extensions. Every public class, method, and function
+has a Google-style docstring covering arguments, return values, and exceptions.
+
+To build the docs locally:
+
+```bash
+pip install sphinx sphinx-rtd-theme
+sphinx-build -b html docs/ docs/_build/html
+```
+
+Then open `docs/_build/html/index.html` in a browser.
+
+---
+
+## 6. Results
 
 ### Datasets
 
@@ -214,7 +263,7 @@ sample 4: dur=5.0s -> spec(128, 130)  cat='breathing'
 
 ---
 
-## 5. Usage
+## 7. Usage
 
 ```python
 from src.image_dataset import ImageDataset, UnlabeledImageDataset
