@@ -1,0 +1,136 @@
+{
+  "classes": [
+    "airplane",
+    "breathing",
+    "brushing_teeth",
+    "can_opening",
+    "car_horn",
+    "cat",
+    "chainsaw",
+    "chirping_birds",
+    "church_bells",
+    "clapping",
+    "clock_alarm",
+    "clock_tick",
+    "coughing",
+    "cow",
+    "crackling_fire",
+    "crickets",
+    "crow",
+    "crying_baby",
+    "dog",
+    "door_wood_creaks",
+    "door_wood_knock",
+    "drinking_sipping",
+    "engine",
+    "fireworks",
+    "footsteps",
+    "frog",
+    "glass_breaking",
+    "hand_saw",
+    "helicopter",
+    "hen",
+    "insects",
+    "keyboard_typing",
+    "laughing",
+    "mouse_click",
+    "pig",
+    "pouring_water",
+    "rain",
+    "rooster",
+    "sea_waves",
+    "sheep",
+    "siren",
+    "sneezing",
+    "snoring",
+    "thunderstorm",
+    "toilet_flush",
+    "train",
+    "vacuum_cleaner",
+    "washing_machine",
+    "water_drops",
+    "wind"
+  ],
+  "samples": [
+    {
+      "file": "000_spec.png",
+      "label": "footsteps"
+    },
+    {
+      "file": "001_spec.png",
+      "label": "thunderstorm"
+    },
+    {
+      "file": "002_spec.png",
+      "label": "siren"
+    },
+    {
+      "file": "003_spec.png",
+      "label": "engine"
+    },
+    {
+      "file": "004_spec.png",
+      "label": "clock_alarm"
+    },
+    {
+      "file": "005_spec.png",
+      "label": "brushing_teeth"
+    },
+    {
+      "file": "006_spec.png",
+      "label": "pig"
+    },
+    {
+      "file": "007_spec.png",
+      "label": "toilet_flush"
+    },
+    {
+      "file": "008_spec.png",
+      "label": "vacuum_cleaner"
+    },
+    {
+      "file": "009_spec.png",
+      "label": "keyboard_typing"
+    },
+    {
+      "file": "010_spec.png",
+      "label": "chainsaw"
+    },
+    {
+      "file": "011_spec.png",
+      "label": "mouse_click"
+    },
+    {
+      "file": "012_spec.png",
+      "label": "hen"
+    },
+    {
+      "file": "013_spec.png",
+      "label": "crying_baby"
+    },
+    {
+      "file": "014_spec.png",
+      "label": "mouse_click"
+    },
+    {
+      "file": "015_spec.png",
+      "label": "crickets"
+    },
+    {
+      "file": "016_spec.png",
+      "label": "chainsaw"
+    },
+    {
+      "file": "017_spec.png",
+      "label": "water_drops"
+    },
+    {
+      "file": "018_spec.png",
+      "label": "vacuum_cleaner"
+    },
+    {
+      "file": "019_spec.png",
+      "label": "door_wood_knock"
+    }
+  ]
+}

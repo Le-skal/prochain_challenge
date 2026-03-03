@@ -639,10 +639,22 @@
       <h3>ESC-50 &mdash; Sound Classifier
         <span class="meta">50 classes &middot; audio &rarr; mel spectrogram &rarr; MobileNetV2</span>
       </h3>
-      <span class="badge badge-soon">Coming soon</span>
+      <span class="badge badge-live"><span class="dot"></span>Live</span>
     </div>
-    <div class="coming-soon-body">
-      Model training in progress &mdash; will be deployed shortly.
+    <div id="esc50-status" class="model-status-msg">Loading model&hellip;</div>
+    <div id="esc50-grid" class="test-grid" style="display:none"></div>
+    <div id="esc50-predict" class="predict-area" style="display:none">
+      <div class="predict-img">
+        <img id="esc50-img" src="" alt="selected">
+      </div>
+      <div>
+        <div class="predict-label" id="esc50-predict-label">click a spectrogram</div>
+        <div id="esc50-bars"></div>
+        <div class="ground-truth" id="esc50-gt" style="display:none">
+          Ground truth:&nbsp;<span class="gt-value" id="esc50-gt-val"></span>
+          <span id="esc50-gt-icon"></span>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -997,6 +1009,96 @@ async function runUtkface(idx) {
 }
 
 initUtkface();
+
+/* ── ESC-50 Sound Classification inference ─────────────────────────── */
+let esc50Model = null, esc50Meta = null;
+
+async function initEsc50() {
+  const statusEl = document.getElementById('esc50-status');
+  try {
+    [esc50Model, esc50Meta] = await Promise.all([
+      tf.loadGraphModel('models/esc50/model.json'),
+      fetch('test_data/esc50/labels.json').then(r => r.json())
+    ]);
+    buildEsc50Grid();
+    statusEl.style.display = 'none';
+    document.getElementById('esc50-grid').style.display    = 'grid';
+    document.getElementById('esc50-predict').style.display = 'grid';
+    runEsc50(0);
+  } catch(e) {
+    console.error('ESC-50 model error:', e);
+    statusEl.textContent = 'Error: ' + e.message;
+  }
+}
+
+function buildEsc50Grid() {
+  const grid = document.getElementById('esc50-grid');
+  esc50Meta.samples.forEach((s, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'test-thumb';
+    btn.onclick = () => runEsc50(i);
+    const img = document.createElement('img');
+    img.src = 'test_data/esc50/' + s.file; img.alt = s.label;
+    btn.appendChild(img); grid.appendChild(btn);
+  });
+}
+
+async function runEsc50(idx) {
+  if (!esc50Model) return;
+  document.querySelectorAll('#esc50-grid .test-thumb').forEach((b, i) =>
+    b.classList.toggle('active', i === idx));
+
+  const sample = esc50Meta.samples[idx];
+  const imgEl  = document.getElementById('esc50-img');
+  imgEl.src    = 'test_data/esc50/' + sample.file;
+
+  document.getElementById('esc50-predict-label').textContent = 'Running\u2026';
+  document.getElementById('esc50-bars').innerHTML = '';
+  document.getElementById('esc50-gt').style.display = 'none';
+
+  await new Promise(res => {
+    if (imgEl.complete && imgEl.naturalHeight) res(); else imgEl.onload = res;
+  });
+
+  // Spectrograms are grayscale PNGs, stack to 3 channels
+  const tensor = tf.tidy(() => {
+    const gray = tf.browser.fromPixels(imgEl, 1);
+    const rgb = tf.concat([gray, gray, gray], 2);
+    return rgb.resizeBilinear([224,224]).toFloat().div(127.5).sub(1).expandDims(0);
+  });
+  const probs = Array.from(esc50Model.execute(tensor).dataSync());
+  tensor.dispose();
+
+  const ranked = probs
+    .map((p, i) => ({ prob: p, label: esc50Meta.classes[i] }))
+    .sort((a, b) => b.prob - a.prob).slice(0, 3);
+
+  const barsEl = document.getElementById('esc50-bars');
+  barsEl.innerHTML = '';
+  ranked.forEach((r, i) => {
+    const pct = (r.prob * 100).toFixed(1);
+    const row = document.createElement('div');
+    row.className = 'pred-bar-row';
+    row.innerHTML = `
+      <div class="pred-bar-meta">
+        <span class="pred-name">${r.label.replace(/_/g, ' ')}</span>
+        <span class="pred-pct">${pct}%</span>
+      </div>
+      <div class="pred-bar-track">
+        <div class="pred-bar-fill ${i===0?'rank-1':''}" style="width:${pct}%"></div>
+      </div>`;
+    barsEl.appendChild(row);
+  });
+
+  document.getElementById('esc50-predict-label').textContent = 'Top\u20113 predictions';
+  const correct = ranked[0].label === sample.label;
+  document.getElementById('esc50-gt-val').textContent  = sample.label.replace(/_/g, ' ');
+  document.getElementById('esc50-gt-icon').textContent = correct ? '\u2713' : '\u2717';
+  document.getElementById('esc50-gt-icon').className   = correct ? 'gt-correct' : 'gt-wrong';
+  document.getElementById('esc50-gt').style.display    = 'flex';
+}
+
+initEsc50();
 </script>
 
 </body>
