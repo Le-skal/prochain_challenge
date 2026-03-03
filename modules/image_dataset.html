@@ -1,0 +1,176 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Image Datasets &mdash; OOP for AI — Dataset Library 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Audio Datasets" href="audio_dataset.html" />
+    <link rel="prev" title="Dataset Base Classes" href="dataset.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            OOP for AI — Dataset Library
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Modules</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="utils.html">Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dataset.html">Dataset Base Classes</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Image Datasets</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#classes">Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#src.image_dataset.ImageDataset"><code class="docutils literal notranslate"><span class="pre">ImageDataset</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#src.image_dataset.UnlabeledImageDataset"><code class="docutils literal notranslate"><span class="pre">UnlabeledImageDataset</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="audio_dataset.html">Audio Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="batch_loader.html">BatchLoader</a></li>
+<li class="toctree-l1"><a class="reference internal" href="preprocessing.html">Preprocessing</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">OOP for AI — Dataset Library</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Image Datasets</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/modules/image_dataset.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-src.image_dataset">
+<span id="image-datasets"></span><h1>Image Datasets<a class="headerlink" href="#module-src.image_dataset" title="Link to this heading"></a></h1>
+<p>Concrete image dataset classes.</p>
+<section id="classes">
+<h2>Classes<a class="headerlink" href="#classes" title="Link to this heading"></a></h2>
+<p>ImageDataset          – labeled images (classification or regression)
+UnlabeledImageDataset – images without labels</p>
+</section>
+<dl class="py class">
+<dt class="sig sig-object py" id="src.image_dataset.ImageDataset">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">src.image_dataset.</span></span><span class="sig-name descname"><span class="pre">ImageDataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lazy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labels_file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/image_dataset.html#ImageDataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.image_dataset.ImageDataset" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="dataset.html#src.dataset.LabeledDataset" title="src.dataset.LabeledDataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">LabeledDataset</span></code></a></p>
+<p>Labeled image dataset supporting two storage layouts.</p>
+<dl class="simple">
+<dt><strong>CSV mode</strong> (<code class="docutils literal notranslate"><span class="pre">labels_file</span></code> provided):</dt><dd><p>Images are stored flat inside <em>root</em>. A CSV file maps each filename
+to its label (string for classification, numeric for regression).</p>
+</dd>
+<dt><strong>Folder mode</strong> (<code class="docutils literal notranslate"><span class="pre">labels_file</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code>):</dt><dd><p>Images are stored inside per-class subdirectories of <em>root</em>. The label
+of each image is the name of its parent subdirectory.</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>root</strong> – Path to the directory containing the image files (or
+subdirectories in folder mode).</p></li>
+<li><p><strong>lazy</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code> (default), images are loaded on demand; if
+<code class="docutils literal notranslate"><span class="pre">False</span></code>, all images are loaded into memory at construction time.</p></li>
+<li><p><strong>labels_file</strong> – Path to the CSV file (filename → label). Pass <code class="docutils literal notranslate"><span class="pre">None</span></code>
+to use the folder-hierarchy mode.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>TypeError</strong> – If any argument has an unexpected type.</p></li>
+<li><p><strong>FileNotFoundError</strong> – If <em>root</em> or <em>labels_file</em> does not exist.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="src.image_dataset.UnlabeledImageDataset">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">src.image_dataset.</span></span><span class="sig-name descname"><span class="pre">UnlabeledImageDataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lazy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/image_dataset.html#UnlabeledImageDataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.image_dataset.UnlabeledImageDataset" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="dataset.html#src.dataset.UnlabeledDataset" title="src.dataset.UnlabeledDataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">UnlabeledDataset</span></code></a></p>
+<p>Image dataset without labels (flat folder, no CSV required).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>root</strong> – Path to the directory containing image files.</p></li>
+<li><p><strong>lazy</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code> (default), images are loaded on demand.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>TypeError</strong> – If any argument has an unexpected type.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="dataset.html" class="btn btn-neutral float-left" title="Dataset Base Classes" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="audio_dataset.html" class="btn btn-neutral float-right" title="Audio Datasets" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

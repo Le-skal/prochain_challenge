@@ -1,0 +1,657 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>src.preprocessing &mdash; OOP for AI — Dataset Library 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            OOP for AI — Dataset Library
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Modules</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules/utils.html">Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules/dataset.html">Dataset Base Classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules/image_dataset.html">Image Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules/audio_dataset.html">Audio Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules/batch_loader.html">BatchLoader</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules/preprocessing.html">Preprocessing</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">OOP for AI — Dataset Library</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">src.preprocessing</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for src.preprocessing</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Preprocessing transforms and pipeline.</span>
+
+<span class="sd">All transforms are callable classes: hyperparameters at construction time,</span>
+<span class="sd">data-only at call time.</span>
+
+<span class="sd">Class hierarchy</span>
+<span class="sd">---------------</span>
+<span class="sd">Transform (ABC)</span>
+<span class="sd">├── CenterCrop          image</span>
+<span class="sd">├── RandomCrop          image</span>
+<span class="sd">├── RandomFlip          image</span>
+<span class="sd">├── Padding             image</span>
+<span class="sd">├── MelSpectrogram      audio  (y, sr) → np.ndarray</span>
+<span class="sd">├── AudioRandomCrop     audio  (y, sr) → (y, sr)</span>
+<span class="sd">├── Resample            audio  (y, sr) → (y, sr)</span>
+<span class="sd">├── PitchShift          audio  (y, sr) → (y, sr)</span>
+<span class="sd">└── Pipeline            any    chains transforms sequentially</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">librosa</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">check_range</span><span class="p">,</span> <span class="n">check_type</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Abstract base class</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="Transform">
+<a class="viewcode-back" href="../../modules/preprocessing.html#src.preprocessing.Transform">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Transform</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract base class for all preprocessing transforms.</span>
+
+<span class="sd">    Every transform is callable: hyperparameters are fixed at construction,</span>
+<span class="sd">    and :meth:`__call__` receives only the data to transform.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply the transform.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: Input data.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Transformed data.</span>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Image transforms  (input/output: np.ndarray of shape (H, W, 3))</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="CenterCrop">
+<a class="viewcode-back" href="../../modules/preprocessing.html#src.preprocessing.CenterCrop">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CenterCrop</span><span class="p">(</span><span class="n">Transform</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Crop an image around its center to at most ``height`` × ``width``.</span>
+
+<span class="sd">    A dimension is only cropped when the image is strictly larger than the</span>
+<span class="sd">    target in that dimension; smaller dimensions are left unchanged.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        height: Maximum output height in pixels.</span>
+<span class="sd">        width: Maximum output width in pixels.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        TypeError: If ``height`` or ``width`` are not ``int``.</span>
+<span class="sd">        ValueError: If either dimension is less than 1.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">check_type</span><span class="p">(</span><span class="n">height</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="s2">&quot;height&quot;</span><span class="p">)</span>
+        <span class="n">check_type</span><span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="s2">&quot;width&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">height</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&#39;height&#39; must be ≥ 1, got </span><span class="si">{</span><span class="n">height</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">width</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&#39;width&#39; must be ≥ 1, got </span><span class="si">{</span><span class="n">width</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_height</span> <span class="o">=</span> <span class="n">height</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_width</span> <span class="o">=</span> <span class="n">width</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply center crop.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: Image array of shape (H, W, 3).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Cropped image array.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">check_type</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">)</span>
+        <span class="n">h</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">h</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_height</span><span class="p">:</span>
+            <span class="n">top</span> <span class="o">=</span> <span class="p">(</span><span class="n">h</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_height</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">top</span><span class="p">:</span> <span class="n">top</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_height</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="k">if</span> <span class="n">w</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_width</span><span class="p">:</span>
+            <span class="n">left</span> <span class="o">=</span> <span class="p">(</span><span class="n">w</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_width</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="n">left</span><span class="p">:</span> <span class="n">left</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_width</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">data</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">height</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Target height.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_height</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">width</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Target width.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_width</span></div>
+
+
+
+<div class="viewcode-block" id="RandomCrop">
+<a class="viewcode-back" href="../../modules/preprocessing.html#src.preprocessing.RandomCrop">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RandomCrop</span><span class="p">(</span><span class="n">Transform</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Crop an image at a random position to at most ``height`` × ``width``.</span>
+
+<span class="sd">    A dimension is only cropped when the image is strictly larger than the</span>
+<span class="sd">    target in that dimension; smaller dimensions are left unchanged.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        height: Maximum output height in pixels.</span>
+<span class="sd">        width: Maximum output width in pixels.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        TypeError: If ``height`` or ``width`` are not ``int``.</span>
+<span class="sd">        ValueError: If either dimension is less than 1.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">check_type</span><span class="p">(</span><span class="n">height</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="s2">&quot;height&quot;</span><span class="p">)</span>
+        <span class="n">check_type</span><span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="s2">&quot;width&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">height</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&#39;height&#39; must be ≥ 1, got </span><span class="si">{</span><span class="n">height</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">width</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&#39;width&#39; must be ≥ 1, got </span><span class="si">{</span><span class="n">width</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_height</span> <span class="o">=</span> <span class="n">height</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_width</span> <span class="o">=</span> <span class="n">width</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply random crop.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: Image array of shape (H, W, 3).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Cropped image array.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">check_type</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">)</span>
+        <span class="n">h</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">h</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_height</span><span class="p">:</span>
+            <span class="n">top</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">h</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_height</span><span class="p">)</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">top</span><span class="p">:</span> <span class="n">top</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_height</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="k">if</span> <span class="n">w</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_width</span><span class="p">:</span>
+            <span class="n">left</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">w</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_width</span><span class="p">)</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="n">left</span><span class="p">:</span> <span class="n">left</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_width</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">data</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">height</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Target height.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_height</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">width</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Target width.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_width</span></div>
+
+
+
+<div class="viewcode-block" id="RandomFlip">
+<a class="viewcode-back" href="../../modules/preprocessing.html#src.preprocessing.RandomFlip">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RandomFlip</span><span class="p">(</span><span class="n">Transform</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Randomly flip an image along its horizontal and/or vertical axis.</span>
+
+<span class="sd">    Each axis is flipped independently with probability ``p``.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        p: Probability of flipping along each axis. Must be in ``[0, 1]``.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        TypeError: If ``p`` is not a ``float``.</span>
+<span class="sd">        ValueError: If ``p`` is outside ``[0, 1]``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">p</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">check_type</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="s2">&quot;p&quot;</span><span class="p">)</span>
+        <span class="n">check_range</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;p&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_p</span> <span class="o">=</span> <span class="n">p</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply random flip.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: Image array of shape (H, W, 3).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Flipped image array (a copy).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">check_type</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_p</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># vertical flip</span>
+        <span class="k">if</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_p</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># horizontal flip</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">p</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Flip probability per axis.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_p</span></div>
+
+
+
+<div class="viewcode-block" id="Padding">
+<a class="viewcode-back" href="../../modules/preprocessing.html#src.preprocessing.Padding">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Padding</span><span class="p">(</span><span class="n">Transform</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pad an image to at least ``height`` × ``width`` using a solid colour.</span>
+
+<span class="sd">    Padding is added symmetrically. Dimensions that already meet or exceed</span>
+<span class="sd">    the target are not modified.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        height: Minimum output height in pixels.</span>
+<span class="sd">        width: Minimum output width in pixels.</span>
+<span class="sd">        color: RGB fill colour as an ``(R, G, B)`` int tuple. Default black.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        TypeError: If ``height`` or ``width`` are not ``int``, or ``color``</span>
+<span class="sd">            is not a ``tuple``.</span>
+<span class="sd">        ValueError: If either dimension is less than 1.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">height</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">width</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">color</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">check_type</span><span class="p">(</span><span class="n">height</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="s2">&quot;height&quot;</span><span class="p">)</span>
+        <span class="n">check_type</span><span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="s2">&quot;width&quot;</span><span class="p">)</span>
+        <span class="n">check_type</span><span class="p">(</span><span class="n">color</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">,</span> <span class="s2">&quot;color&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">height</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&#39;height&#39; must be ≥ 1, got </span><span class="si">{</span><span class="n">height</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">width</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&#39;width&#39; must be ≥ 1, got </span><span class="si">{</span><span class="n">width</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_height</span> <span class="o">=</span> <span class="n">height</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_width</span> <span class="o">=</span> <span class="n">width</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_color</span> <span class="o">=</span> <span class="n">color</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply padding.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: Image array of shape (H, W, 3).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Padded image array of shape (max(H, height), max(W, width), 3).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">check_type</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">)</span>
+        <span class="n">h</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">out_h</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_height</span><span class="p">)</span>
+        <span class="n">out_w</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_width</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">out_h</span> <span class="o">==</span> <span class="n">h</span> <span class="ow">and</span> <span class="n">out_w</span> <span class="o">==</span> <span class="n">w</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">data</span>
+
+        <span class="c1"># Create a canvas pre-filled with the target colour, then paste image.</span>
+        <span class="n">canvas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="n">out_h</span><span class="p">,</span> <span class="n">out_w</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_color</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">top</span> <span class="o">=</span> <span class="p">(</span><span class="n">out_h</span> <span class="o">-</span> <span class="n">h</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>
+        <span class="n">left</span> <span class="o">=</span> <span class="p">(</span><span class="n">out_w</span> <span class="o">-</span> <span class="n">w</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>
+        <span class="n">canvas</span><span class="p">[</span><span class="n">top</span><span class="p">:</span> <span class="n">top</span> <span class="o">+</span> <span class="n">h</span><span class="p">,</span> <span class="n">left</span><span class="p">:</span> <span class="n">left</span> <span class="o">+</span> <span class="n">w</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="k">return</span> <span class="n">canvas</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">height</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Minimum output height.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_height</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">width</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Minimum output width.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_width</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">color</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;RGB fill colour.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_color</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Audio transforms  (input: (np.ndarray, int) = (waveform, sample_rate))</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="MelSpectrogram">
+<a class="viewcode-back" href="../../modules/preprocessing.html#src.preprocessing.MelSpectrogram">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MelSpectrogram</span><span class="p">(</span><span class="n">Transform</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert a waveform to a Mel spectrogram.</span>
+
+<span class="sd">    This transform changes the data type: input is ``(y, sr)``, output is a</span>
+<span class="sd">    2-D ``np.ndarray``. Audio-specific transforms (e.g. :class:`Resample`)</span>
+<span class="sd">    cannot be chained after this one.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        n_mels: Number of Mel frequency bands.</span>
+<span class="sd">        n_fft: FFT window size in samples.</span>
+<span class="sd">        hop_length: Hop length in samples between successive frames.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        TypeError: If any argument is not an ``int``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">n_mels</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">,</span> <span class="n">n_fft</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2048</span><span class="p">,</span> <span class="n">hop_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">512</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">check_type</span><span class="p">(</span><span class="n">n_mels</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="s2">&quot;n_mels&quot;</span><span class="p">)</span>
+        <span class="n">check_type</span><span class="p">(</span><span class="n">n_fft</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="s2">&quot;n_fft&quot;</span><span class="p">)</span>
+        <span class="n">check_type</span><span class="p">(</span><span class="n">hop_length</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="s2">&quot;hop_length&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_n_mels</span> <span class="o">=</span> <span class="n">n_mels</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_n_fft</span> <span class="o">=</span> <span class="n">n_fft</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_hop_length</span> <span class="o">=</span> <span class="n">hop_length</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute the Mel spectrogram.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: ``(waveform, sample_rate)`` tuple.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Mel spectrogram array of shape ``(n_mels, T)``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">check_type</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">)</span>
+        <span class="n">y</span><span class="p">,</span> <span class="n">sr</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="k">return</span> <span class="n">librosa</span><span class="o">.</span><span class="n">feature</span><span class="o">.</span><span class="n">melspectrogram</span><span class="p">(</span>
+            <span class="n">y</span><span class="o">=</span><span class="n">y</span><span class="p">,</span> <span class="n">sr</span><span class="o">=</span><span class="n">sr</span><span class="p">,</span> <span class="n">n_mels</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_mels</span><span class="p">,</span>
+            <span class="n">n_fft</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_fft</span><span class="p">,</span> <span class="n">hop_length</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_hop_length</span>
+        <span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">n_mels</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_mels</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">n_fft</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_fft</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">hop_length</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hop_length</span></div>
+
+
+
+<div class="viewcode-block" id="AudioRandomCrop">
+<a class="viewcode-back" href="../../modules/preprocessing.html#src.preprocessing.AudioRandomCrop">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AudioRandomCrop</span><span class="p">(</span><span class="n">Transform</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Randomly crop an audio track to a fixed duration.</span>
+
+<span class="sd">    If the track is shorter than or equal to ``duration`` seconds, the</span>
+<span class="sd">    original track is returned unchanged.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        duration: Target duration in seconds (must be positive).</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        TypeError: If ``duration`` is not numeric.</span>
+<span class="sd">        ValueError: If ``duration`` is not positive.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">duration</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">check_type</span><span class="p">(</span><span class="n">duration</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span> <span class="s2">&quot;duration&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">duration</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&#39;duration&#39; must be positive, got </span><span class="si">{</span><span class="n">duration</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_duration</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">duration</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply random crop.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: ``(waveform, sample_rate)`` tuple.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``(cropped_waveform, sample_rate)`` tuple.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">check_type</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">)</span>
+        <span class="n">y</span><span class="p">,</span> <span class="n">sr</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="n">total</span> <span class="o">=</span> <span class="n">librosa</span><span class="o">.</span><span class="n">get_duration</span><span class="p">(</span><span class="n">y</span><span class="o">=</span><span class="n">y</span><span class="p">,</span> <span class="n">sr</span><span class="o">=</span><span class="n">sr</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">total</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_duration</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">data</span>
+        <span class="n">start_sec</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">total</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_duration</span><span class="p">)</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">start_sec</span> <span class="o">*</span> <span class="n">sr</span><span class="p">)</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_duration</span> <span class="o">*</span> <span class="n">sr</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">y</span><span class="p">[</span><span class="n">start</span><span class="p">:</span> <span class="n">start</span> <span class="o">+</span> <span class="n">n</span><span class="p">],</span> <span class="n">sr</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">duration</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Target duration in seconds.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_duration</span></div>
+
+
+
+<div class="viewcode-block" id="Resample">
+<a class="viewcode-back" href="../../modules/preprocessing.html#src.preprocessing.Resample">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Resample</span><span class="p">(</span><span class="n">Transform</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resample an audio track to a new sampling rate.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        target_sr: Target sampling rate in Hz.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        TypeError: If ``target_sr`` is not an ``int``.</span>
+<span class="sd">        ValueError: If ``target_sr`` is less than 1.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_sr</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">check_type</span><span class="p">(</span><span class="n">target_sr</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="s2">&quot;target_sr&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">target_sr</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&#39;target_sr&#39; must be ≥ 1, got </span><span class="si">{</span><span class="n">target_sr</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_target_sr</span> <span class="o">=</span> <span class="n">target_sr</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Resample the waveform.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: ``(waveform, sample_rate)`` tuple.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``(resampled_waveform, target_sr)`` tuple.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">check_type</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">)</span>
+        <span class="n">y</span><span class="p">,</span> <span class="n">sr</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="k">if</span> <span class="n">sr</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_target_sr</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">data</span>
+        <span class="n">y_resampled</span> <span class="o">=</span> <span class="n">librosa</span><span class="o">.</span><span class="n">resample</span><span class="p">(</span>
+            <span class="n">y</span><span class="p">,</span> <span class="n">orig_sr</span><span class="o">=</span><span class="n">sr</span><span class="p">,</span> <span class="n">target_sr</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_target_sr</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">y_resampled</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_target_sr</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">target_sr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Target sampling rate in Hz.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_target_sr</span></div>
+
+
+
+<div class="viewcode-block" id="PitchShift">
+<a class="viewcode-back" href="../../modules/preprocessing.html#src.preprocessing.PitchShift">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PitchShift</span><span class="p">(</span><span class="n">Transform</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Shift the pitch of an audio track by a fixed number of semitones.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        n_steps: Semitones to shift (positive = up, negative = down).</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        TypeError: If ``n_steps`` is not numeric.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_steps</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">check_type</span><span class="p">(</span><span class="n">n_steps</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span> <span class="s2">&quot;n_steps&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_n_steps</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">n_steps</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply pitch shift.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: ``(waveform, sample_rate)`` tuple.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``(shifted_waveform, sample_rate)`` tuple.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">check_type</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">)</span>
+        <span class="n">y</span><span class="p">,</span> <span class="n">sr</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="n">y_shifted</span> <span class="o">=</span> <span class="n">librosa</span><span class="o">.</span><span class="n">effects</span><span class="o">.</span><span class="n">pitch_shift</span><span class="p">(</span>
+            <span class="n">y</span><span class="p">,</span> <span class="n">sr</span><span class="o">=</span><span class="n">sr</span><span class="p">,</span> <span class="n">n_steps</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_steps</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">y_shifted</span><span class="p">,</span> <span class="n">sr</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">n_steps</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Semitone shift applied.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_steps</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Pipeline</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="Pipeline">
+<a class="viewcode-back" href="../../modules/preprocessing.html#src.preprocessing.Pipeline">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Pipeline</span><span class="p">(</span><span class="n">Transform</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Chain transforms and apply them sequentially.</span>
+
+<span class="sd">    Takes a variable number of :class:`Transform` instances and applies them</span>
+<span class="sd">    left to right. Order matters: some transforms change the data type (e.g.</span>
+<span class="sd">    :class:`MelSpectrogram`) and cannot be followed by transforms that expect</span>
+<span class="sd">    the original type.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        *transforms: :class:`Transform` instances to apply in order.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        TypeError: If any positional argument is not a :class:`Transform`.</span>
+
+<span class="sd">    Example::</span>
+
+<span class="sd">        pipeline = Pipeline(</span>
+<span class="sd">            AudioRandomCrop(duration=5.0),</span>
+<span class="sd">            Resample(target_sr=22050),</span>
+<span class="sd">            MelSpectrogram(n_mels=128),</span>
+<span class="sd">        )</span>
+<span class="sd">        spectrogram = pipeline((y, sr))</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">transforms</span><span class="p">:</span> <span class="n">Transform</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">transforms</span><span class="p">):</span>
+            <span class="n">check_type</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">Transform</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;transforms[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Transform</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">transforms</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply all transforms in sequence.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: Input data compatible with the first transform.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Output after all transforms have been applied.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">transform</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">transform</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">data</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">transforms</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Transform</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The ordered tuple of transforms in this pipeline.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
