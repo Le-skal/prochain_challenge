@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DataKit — ML Dataset Library</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    :root {
+      --bg:           #080d16;
+      --bg2:          #0d1421;
+      --surface:      #111827;
+      --surface2:     #1a2233;
+      --border:       rgba(255,255,255,0.07);
+      --border-mid:   rgba(255,255,255,0.12);
+      --text:         #f1f5f9;
+      --muted:        #64748b;
+      --muted2:       #94a3b8;
+      --accent:       #6366f1;
+      --accent2:      #818cf8;
+      --green:        #10b981;
+      --green2:       #34d399;
+      --red:          #ef4444;
+      --mono: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, sans-serif;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    header {
+      position: sticky; top: 0; z-index: 20;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 2.5rem;
+      height: 60px;
+      background: rgba(8,13,22,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .logo {
+      font-size: 1.1rem; font-weight: 700;
+      letter-spacing: -0.3px; color: var(--text);
+      text-decoration: none;
+    }
+    .logo span { color: var(--accent2); }
+
+    nav { display: flex; align-items: center; gap: 0.25rem; }
+    nav a {
+      color: var(--muted2);
+      text-decoration: none;
+      font-size: 0.85rem; font-weight: 500;
+      padding: 0.4rem 0.85rem;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      transition: color 0.15s, border-color 0.15s, background 0.15s;
+    }
+    nav a:hover {
+      color: var(--text);
+      background: var(--surface2);
+      border-color: var(--border-mid);
+    }
+
+    /* ── Hero ───────────────────────────────────────────────────────── */
+    .hero {
+      text-align: center;
+      padding: 6rem 2rem 4rem;
+      max-width: 780px;
+      margin: 0 auto;
+    }
+    .hero-eyebrow {
+      display: inline-block;
+      font-size: 0.75rem; font-weight: 600;
+      letter-spacing: 2px; text-transform: uppercase;
+      color: var(--accent2);
+      margin-bottom: 1.5rem;
+      font-family: var(--mono);
+    }
+    .hero h1 {
+      font-size: clamp(2.8rem, 6vw, 4.5rem);
+      font-weight: 900;
+      letter-spacing: -3px;
+      line-height: 1;
+      margin-bottom: 1.5rem;
+      background: linear-gradient(135deg, #fff 0%, #a5b4fc 55%, #e879f9 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: 1.05rem; font-weight: 400;
+      color: var(--muted2); line-height: 1.7;
+      max-width: 520px; margin: 0 auto 2.5rem;
+    }
+
+    .stats-row {
+      display: flex; justify-content: center;
+      gap: 2.5rem; flex-wrap: wrap;
+      margin-bottom: 2.5rem;
+      padding: 1.25rem 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .stat { text-align: center; }
+    .stat-num {
+      display: block;
+      font-size: 1.5rem; font-weight: 800;
+      color: var(--text); letter-spacing: -1px;
+    }
+    .stat-label {
+      font-size: 0.72rem; font-weight: 500;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 1px;
+    }
+
+    .pill-group { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
+    .pill {
+      background: var(--surface2);
+      border: 1px solid var(--border-mid);
+      border-radius: 99px;
+      padding: 0.3rem 0.9rem;
+      font-size: 0.75rem; font-weight: 500;
+      color: var(--muted2);
+      font-family: var(--mono);
+    }
+
+    /* ── Container ──────────────────────────────────────────────────── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 2rem 5rem; }
+
+    .section-header { margin-bottom: 1.5rem; }
+    .section-eyebrow {
+      font-family: var(--mono);
+      font-size: 0.7rem; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 2px;
+      color: var(--accent2); margin-bottom: 0.4rem;
+    }
+    .section-title {
+      font-size: 1.3rem; font-weight: 700;
+      letter-spacing: -0.5px; color: var(--text);
+    }
+    .section-desc {
+      color: var(--muted2); font-size: 0.88rem;
+      line-height: 1.6; margin-top: 0.4rem;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 4rem 0;
+    }
+
+    /* ── Cards (shared) ─────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .card:hover { border-color: var(--border-mid); }
+    .card-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .card-header h3 {
+      font-size: 0.9rem; font-weight: 600;
+      font-family: var(--mono); color: var(--text);
+    }
+    .card-header .meta {
+      font-size: 0.78rem; color: var(--muted); font-weight: 400;
+      margin-left: 0.5rem; font-family: 'Inter', sans-serif;
+    }
+
+    /* ── Status badges ──────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.7rem; font-weight: 600;
+      padding: 0.25rem 0.75rem;
+      border-radius: 99px;
+      font-family: var(--mono); letter-spacing: 0.5px;
+    }
+    .badge-live {
+      background: rgba(16,185,129,0.12);
+      border: 1px solid rgba(16,185,129,0.3);
+      color: var(--green2);
+    }
+    .badge-live .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.8); }
+    }
+    .badge-soon {
+      background: var(--surface2);
+      border: 1px solid var(--border-mid);
+      color: var(--muted);
+    }
+
+    /* ── Preprocessing — Image picker ───────────────────────────────── */
+    .picker-grid { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .thumb-btn {
+      position: relative; width: 96px; height: 76px;
+      border-radius: 12px; overflow: hidden; cursor: pointer;
+      border: 2px solid var(--border);
+      transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+      background: var(--surface2); padding: 0;
+    }
+    .thumb-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      border-color: var(--border-mid);
+    }
+    .thumb-btn.active {
+      border-color: var(--accent2);
+      box-shadow: 0 0 0 3px rgba(129,140,248,0.2);
+    }
+    .thumb-btn img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .thumb-btn .thumb-label {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: linear-gradient(transparent, rgba(0,0,0,0.7));
+      font-size: 0.58rem; text-align: center; padding: 8px 2px 3px;
+      color: rgba(255,255,255,0.85); font-family: var(--mono);
+    }
+
+    /* ── Pipeline controls ──────────────────────────────────────────── */
+    .controls-card { margin-bottom: 1rem; }
+    .controls-header {
+      padding: 0.9rem 1.5rem;
+      font-size: 0.8rem; color: var(--muted);
+      font-family: var(--mono);
+    }
+    .controls-header code { color: var(--text); }
+    .transform-row {
+      display: flex; align-items: center; gap: 1rem;
+      padding: 0.85rem 1.5rem;
+      border-top: 1px solid var(--border); flex-wrap: wrap;
+    }
+
+    /* Toggle */
+    .switch { position: relative; width: 36px; height: 20px; flex-shrink: 0; cursor: pointer; }
+    .switch input { display: none; }
+    .switch-track {
+      position: absolute; inset: 0;
+      background: var(--surface2); border: 1px solid var(--border-mid);
+      border-radius: 99px; transition: background 0.2s, border-color 0.2s;
+    }
+    .switch input:checked ~ .switch-track { background: var(--accent); border-color: var(--accent); }
+    .switch-thumb {
+      position: absolute; top: 3px; left: 3px;
+      width: 14px; height: 14px; background: white;
+      border-radius: 50%; transition: transform 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    .switch input:checked ~ .switch-thumb { transform: translateX(16px); }
+
+    .transform-name {
+      font-family: var(--mono); color: var(--accent2);
+      font-size: 0.85rem; font-weight: 500; min-width: 130px;
+    }
+    .param-group { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .param-label { font-size: 0.78rem; color: var(--muted); font-weight: 500; }
+    input[type="number"] {
+      width: 68px; background: var(--surface2);
+      border: 1px solid var(--border-mid); color: var(--text);
+      padding: 0.3rem 0.5rem; border-radius: 8px;
+      font-size: 0.82rem; font-family: var(--mono); font-weight: 500;
+    }
+    input[type="number"]:focus { outline: none; border-color: var(--accent); }
+    input[type="range"] { accent-color: var(--accent); width: 90px; }
+    .range-value { font-family: var(--mono); font-size: 0.78rem; color: var(--muted2); min-width: 3ch; }
+    input[type="color"] {
+      width: 32px; height: 28px; padding: 2px;
+      border: 1px solid var(--border-mid); border-radius: 8px;
+      background: var(--surface2); cursor: pointer;
+    }
+    .re-roll-btn {
+      background: transparent; border: 1px solid var(--border-mid);
+      color: var(--muted); padding: 0.25rem 0.65rem;
+      border-radius: 8px; font-size: 0.75rem; cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+      font-family: 'Inter', sans-serif;
+    }
+    .re-roll-btn:hover { color: var(--text); border-color: var(--accent2); }
+
+    .apply-btn {
+      width: 100%; border: none; cursor: pointer;
+      padding: 0.85rem 2rem;
+      background: linear-gradient(135deg, var(--accent) 0%, #7c3aed 100%);
+      color: white; font-size: 0.9rem; font-weight: 600;
+      border-radius: 12px; letter-spacing: 0.2px;
+      transition: opacity 0.15s, transform 0.15s;
+      box-shadow: 0 4px 16px rgba(99,102,241,0.35);
+    }
+    .apply-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .apply-btn:active { transform: translateY(0); }
+
+    /* ── Before/After ───────────────────────────────────────────────── */
+    .canvases-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 1.25rem; margin-top: 1.25rem;
+    }
+    @media (max-width: 600px) { .canvases-grid { grid-template-columns: 1fr; } }
+    .canvas-card-label {
+      padding: 0.65rem 1rem; font-size: 0.78rem; color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between;
+    }
+    .canvas-card-label span { font-family: var(--mono); font-size: 0.75rem; }
+    .canvas-card canvas { display: block; width: 100%; height: auto; }
+    .canvas-placeholder {
+      height: 180px; display: flex; align-items: center;
+      justify-content: center; color: var(--surface2);
+      font-size: 0.82rem; font-family: var(--mono);
+    }
+
+    /* ── Model status message ───────────────────────────────────────── */
+    .model-status-msg {
+      padding: 1.5rem;
+      color: var(--muted); font-size: 0.82rem; font-family: var(--mono);
+      display: flex; align-items: center; gap: 0.6rem;
+    }
+    .model-status-msg::before {
+      content: '';
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent2); flex-shrink: 0;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    .coming-soon-body {
+      padding: 2rem 1.5rem; text-align: center;
+      color: var(--muted); font-size: 0.85rem; line-height: 1.6;
+    }
+
+    /* ── Test image grid ────────────────────────────────────────────── */
+    .test-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+      gap: 0.5rem; padding: 1.25rem;
+    }
+    .test-thumb {
+      aspect-ratio: 1; border-radius: 10px; overflow: hidden;
+      cursor: pointer; border: 2px solid transparent;
+      transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+      background: var(--surface2); padding: 0;
+    }
+    .test-thumb:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    }
+    .test-thumb.active {
+      border-color: var(--accent2);
+      box-shadow: 0 0 0 3px rgba(129,140,248,0.2);
+    }
+    .test-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    /* ── Prediction panel ───────────────────────────────────────────── */
+    .predict-area {
+      display: grid; grid-template-columns: 160px 1fr;
+      gap: 1.5rem; padding: 1.25rem;
+      border-top: 1px solid var(--border);
+    }
+    @media (max-width: 600px) { .predict-area { grid-template-columns: 1fr; } }
+    .predict-img {
+      border-radius: 12px; overflow: hidden;
+      border: 1px solid var(--border); background: var(--surface2);
+    }
+    .predict-img img { width: 100%; height: auto; display: block; }
+    .predict-label {
+      font-size: 0.72rem; font-weight: 600; color: var(--muted);
+      font-family: var(--mono); text-transform: uppercase;
+      letter-spacing: 1px; margin-bottom: 0.9rem;
+    }
+    .pred-bar-row { margin-bottom: 0.75rem; }
+    .pred-bar-meta {
+      display: flex; justify-content: space-between;
+      font-size: 0.8rem; margin-bottom: 0.3rem;
+    }
+    .pred-name { color: var(--text); font-weight: 500; }
+    .pred-pct  { color: var(--muted2); font-family: var(--mono); font-size: 0.78rem; }
+    .pred-bar-track {
+      height: 5px; background: var(--surface2);
+      border-radius: 99px; overflow: hidden;
+    }
+    .pred-bar-fill {
+      height: 100%; border-radius: 99px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transition: width 0.5s cubic-bezier(.4,0,.2,1);
+    }
+    .pred-bar-fill.rank-1 {
+      background: linear-gradient(90deg, var(--green), var(--green2));
+    }
+    .ground-truth {
+      margin-top: 1.1rem; padding-top: 0.9rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.8rem; color: var(--muted);
+      display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;
+    }
+    .gt-value { color: var(--text); font-weight: 600; }
+    .gt-correct { color: var(--green); font-weight: 700; }
+    .gt-wrong   { color: var(--red);   font-weight: 700; }
+
+    /* ── About grid ─────────────────────────────────────────────────── */
+    .about-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+    }
+    @media (max-width: 700px) { .about-grid { grid-template-columns: 1fr; } }
+    .about-card { padding: 1.5rem; }
+    .about-card h3 {
+      font-size: 0.82rem; font-weight: 600;
+      color: var(--muted2); text-transform: uppercase;
+      letter-spacing: 1px; margin-bottom: 1rem;
+    }
+    pre {
+      font-family: var(--mono); font-size: 0.78rem;
+      color: var(--muted); line-height: 1.8; overflow-x: auto;
+    }
+    pre .a { color: var(--accent2); }
+    pre .g { color: var(--green2); }
+
+    /* ── Footer ─────────────────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem 2.5rem; text-align: center;
+      color: var(--muted); font-size: 0.82rem;
+      display: flex; align-items: center; justify-content: center;
+      gap: 1.5rem; flex-wrap: wrap;
+    }
+    footer a { color: var(--muted2); text-decoration: none; transition: color 0.15s; }
+    footer a:hover { color: var(--text); }
+    .footer-logo { font-weight: 700; color: var(--text); }
+    .footer-logo span { color: var(--accent2); }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ─────────────────────────────────────────────────────── -->
+<header>
+  <a class="logo" href="#">Data<span>Kit</span></a>
+  <nav>
+    <a href="https://github.com/le-skal/datakit" target="_blank">GitHub ↗</a>
+    <a href="https://le-skal.github.io/datakit/" target="_blank">Docs ↗</a>
+  </nav>
+</header>
+
+<!-- ── Hero ──────────────────────────────────────────────────────── -->
+<div class="hero">
+  <span class="hero-eyebrow">OOP for AI &mdash; DeepSkal 2026</span>
+  <h1>DataKit</h1>
+  <p>A Python library for loading, batching, and preprocessing image and audio
+     datasets &mdash; built with clean object-oriented design for ML pipelines.</p>
+
+  <div class="stats-row">
+    <div class="stat">
+      <span class="stat-num">9,390</span>
+      <span class="stat-label">Images</span>
+    </div>
+    <div class="stat">
+      <span class="stat-num">2,698</span>
+      <span class="stat-label">Audio clips</span>
+    </div>
+    <div class="stat">
+      <span class="stat-num">46</span>
+      <span class="stat-label">Tests passing</span>
+    </div>
+    <div class="stat">
+      <span class="stat-num">90%</span>
+      <span class="stat-label">Val accuracy</span>
+    </div>
+  </div>
+
+  <div class="pill-group">
+    <span class="pill">Python 3.11</span>
+    <span class="pill">NumPy</span>
+    <span class="pill">Pillow</span>
+    <span class="pill">Librosa</span>
+    <span class="pill">ABC / OOP</span>
+    <span class="pill">TensorFlow</span>
+  </div>
+</div>
+
+<!-- ── Main content ───────────────────────────────────────────────── -->
+<div class="container">
+
+  <!-- ══ PREPROCESSING ══ -->
+  <div class="section-header">
+    <div class="section-eyebrow">// Interactive Demo</div>
+    <div class="section-title">Preprocessing Pipeline</div>
+    <div class="section-desc">
+      CenterCrop, RandomFlip, and Padding run live in your browser &mdash;
+      a direct port of the Python transforms.
+    </div>
+  </div>
+
+  <div class="picker-grid" id="picker"></div>
+
+  <div class="card controls-card">
+    <div class="controls-header">
+      Pipeline(<code>CenterCrop</code>, <code>RandomFlip</code>, <code>Padding</code>)
+    </div>
+    <div class="transform-row">
+      <label class="switch">
+        <input type="checkbox" id="cc-on" checked>
+        <span class="switch-track"></span><span class="switch-thumb"></span>
+      </label>
+      <span class="transform-name">CenterCrop</span>
+      <div class="param-group">
+        <label class="param-label">height</label>
+        <input type="number" id="cc-h" value="256" min="1" max="2000">
+        <label class="param-label">width</label>
+        <input type="number" id="cc-w" value="256" min="1" max="2000">
+      </div>
+    </div>
+    <div class="transform-row">
+      <label class="switch">
+        <input type="checkbox" id="rf-on" checked>
+        <span class="switch-track"></span><span class="switch-thumb"></span>
+      </label>
+      <span class="transform-name">RandomFlip</span>
+      <div class="param-group">
+        <label class="param-label">p</label>
+        <input type="range" id="rf-p" min="0" max="1" step="0.05" value="0.5"
+               oninput="document.getElementById('rf-pval').textContent=
+                        (+this.value).toFixed(2)">
+        <span class="range-value" id="rf-pval">0.50</span>
+        <button class="re-roll-btn" onclick="applyPipeline()">&#8635; re-roll</button>
+      </div>
+    </div>
+    <div class="transform-row">
+      <label class="switch">
+        <input type="checkbox" id="pad-on" checked>
+        <span class="switch-track"></span><span class="switch-thumb"></span>
+      </label>
+      <span class="transform-name">Padding</span>
+      <div class="param-group">
+        <label class="param-label">height</label>
+        <input type="number" id="pad-h" value="300" min="1" max="2000">
+        <label class="param-label">width</label>
+        <input type="number" id="pad-w" value="300" min="1" max="2000">
+        <label class="param-label">color</label>
+        <input type="color" id="pad-color" value="#111827">
+      </div>
+    </div>
+  </div>
+
+  <button class="apply-btn" onclick="applyPipeline()">Apply Pipeline &rarr;</button>
+
+  <div class="canvases-grid">
+    <div class="card">
+      <div class="canvas-card-label">
+        <span>Original</span><span id="before-info">—</span>
+      </div>
+      <div id="before-wrap"><div class="canvas-placeholder">select an image</div></div>
+    </div>
+    <div class="card">
+      <div class="canvas-card-label">
+        <span>After Pipeline</span><span id="after-info">—</span>
+      </div>
+      <div id="after-wrap"><div class="canvas-placeholder">click Apply</div></div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ══ ML INFERENCE ══ -->
+  <div class="section-header">
+    <div class="section-eyebrow">// Model Inference</div>
+    <div class="section-title">Fine-tuned MobileNetV2</div>
+    <div class="section-desc">
+      Each model is trained on 80% of its dataset using the DataKit pipeline.
+      Click any test image (held-out 20%) to run inference directly in your browser &mdash; no server.
+    </div>
+  </div>
+
+  <!-- Oxford Pet -->
+  <div class="card" style="margin-bottom:1.25rem;">
+    <div class="card-header">
+      <h3>Oxford-IIIT-Pet &mdash; Breed Classifier
+        <span class="meta">37 classes &middot; ~90% val accuracy</span>
+      </h3>
+      <span class="badge badge-live"><span class="dot"></span>Live</span>
+    </div>
+    <div id="oxford-status" class="model-status-msg">Loading model&hellip;</div>
+    <div id="oxford-grid" class="test-grid" style="display:none"></div>
+    <div id="oxford-predict" class="predict-area" style="display:none">
+      <div class="predict-img">
+        <img id="oxford-img" src="" alt="selected">
+      </div>
+      <div>
+        <div class="predict-label" id="oxford-predict-label">click an image</div>
+        <div id="oxford-bars"></div>
+        <div class="ground-truth" id="oxford-gt" style="display:none">
+          Ground truth:&nbsp;<span class="gt-value" id="oxford-gt-val"></span>
+          <span id="oxford-gt-icon"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UTKFace -->
+  <div class="card" style="margin-bottom:1.25rem;">
+    <div class="card-header">
+      <h3>UTKFace &mdash; Age Estimator
+        <span class="meta">regression &middot; MAE &asymp; 8 yrs</span>
+      </h3>
+      <span class="badge badge-soon">Coming soon</span>
+    </div>
+    <div class="coming-soon-body">
+      Model training in progress &mdash; will be deployed shortly.
+    </div>
+  </div>
+
+  <!-- ESC-50 -->
+  <div class="card" style="margin-bottom:1.25rem;">
+    <div class="card-header">
+      <h3>ESC-50 &mdash; Sound Classifier
+        <span class="meta">50 classes &middot; audio &rarr; mel spectrogram &rarr; MobileNetV2</span>
+      </h3>
+      <span class="badge badge-soon">Coming soon</span>
+    </div>
+    <div class="coming-soon-body">
+      Model training in progress &mdash; will be deployed shortly.
+    </div>
+  </div>
+
+  <!-- BallroomData -->
+  <div class="card" style="margin-bottom:1.25rem;">
+    <div class="card-header">
+      <h3>BallroomData &mdash; Genre Classifier
+        <span class="meta">8 genres &middot; audio &rarr; mel spectrogram &rarr; MobileNetV2</span>
+      </h3>
+      <span class="badge badge-soon">Coming soon</span>
+    </div>
+    <div class="coming-soon-body">
+      Model training in progress &mdash; will be deployed shortly.
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ══ ABOUT ══ -->
+  <div class="section-header">
+    <div class="section-eyebrow">// Library</div>
+    <div class="section-title">Structure &amp; Design</div>
+  </div>
+
+  <div class="about-grid">
+    <div class="card about-card">
+      <h3>Dataset Hierarchy</h3>
+      <pre>
+<span class="a">Dataset</span> (ABC)
+├── <span class="a">LabeledDataset</span> (ABC)
+│   ├── <span class="g">ImageDataset</span>
+│   └── <span class="g">AudioDataset</span>
+└── <span class="a">UnlabeledDataset</span> (ABC)
+    ├── <span class="g">UnlabeledImageDataset</span>
+    └── <span class="g">UnlabeledAudioDataset</span></pre>
+    </div>
+    <div class="card about-card">
+      <h3>Preprocessing Pipeline</h3>
+      <pre>
+<span class="a">Transform</span> (ABC)
+├── <span class="g">CenterCrop</span>       (image)
+├── <span class="g">RandomCrop</span>       (image)
+├── <span class="g">RandomFlip</span>       (image)
+├── <span class="g">Padding</span>          (image)
+├── <span class="g">MelSpectrogram</span>   (audio)
+├── <span class="g">AudioRandomCrop</span>  (audio)
+├── <span class="g">Resample</span>         (audio)
+├── <span class="g">PitchShift</span>       (audio)
+└── <span class="g">Pipeline</span>         (any &rarr; any)</pre>
+    </div>
+    <div class="card about-card">
+      <h3>Quick Start</h3>
+      <pre>
+<span class="a">from</span> src.image_dataset <span class="a">import</span> ImageDataset
+<span class="a">from</span> src.batch_loader  <span class="a">import</span> BatchLoader
+<span class="a">from</span> src.preprocessing <span class="a">import</span> Pipeline, CenterCrop
+
+ds            = ImageDataset(<span class="g">"data/"</span>, lazy=<span class="a">True</span>)
+train, test   = ds.split(<span class="g">0.8</span>)
+loader        = BatchLoader(train, batch_size=<span class="g">32</span>)
+pipe          = Pipeline(CenterCrop(<span class="g">256</span>, <span class="g">256</span>))
+
+<span class="a">for</span> batch <span class="a">in</span> loader:
+    out = [pipe(img) <span class="a">for</span> img, label <span class="a">in</span> batch]</pre>
+    </div>
+    <div class="card about-card">
+      <h3>Key Design Choices</h3>
+      <pre style="white-space:pre-wrap;color:var(--muted);">
+&#x2022; ABCs prevent incomplete instantiation
+&#x2022; All attributes private, exposed via @property
+&#x2022; split() shuffles indices, not data
+&#x2022; BatchLoader uses a generator (yield)
+&#x2022; Callable classes for all transforms
+&#x2022; CSV labels auto-cast: int &#x2192; float &#x2192; str
+&#x2022; Pillow for RGB-safe image loading
+&#x2022; librosa.load(sr=None) &#x2192; (y,&#x202f;sr) tuple</pre>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<footer>
+  <span class="footer-logo">Data<span>Kit</span></span>
+  <span>OOP for AI &mdash; DeepSkal 2026</span>
+  <a href="https://github.com/le-skal/datakit" target="_blank">GitHub</a>
+  <a href="https://le-skal.github.io/datakit/" target="_blank">Documentation</a>
+</footer>
+
+<!-- ── JavaScript ─────────────────────────────────────────────────── -->
+<script>
+/* ── Preprocessing transforms ─────────────────────────────────────── */
+const SAMPLES = [
+  { url: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=700&h=525&fit=crop&auto=format', name: 'Tabby cat' },
+  { url: 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=700&h=525&fit=crop&auto=format', name: 'Labrador' },
+  { url: 'https://images.unsplash.com/photo-1574158622682-e40e69881006?w=700&h=525&fit=crop&auto=format', name: 'Persian cat' },
+  { url: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=700&h=525&fit=crop&auto=format', name: 'Golden retriever' }
+];
+
+let currentImg = null;
+
+const pickerEl = document.getElementById('picker');
+SAMPLES.forEach((s, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'thumb-btn' + (i === 0 ? ' active' : '');
+  btn.onclick = () => selectImage(i);
+  const img = document.createElement('img');
+  img.src = s.url; img.alt = s.name; img.crossOrigin = 'anonymous';
+  const lbl = document.createElement('span');
+  lbl.className = 'thumb-label'; lbl.textContent = s.name;
+  btn.appendChild(img); btn.appendChild(lbl);
+  pickerEl.appendChild(btn);
+});
+
+function selectImage(idx) {
+  document.querySelectorAll('.thumb-btn').forEach((b, i) =>
+    b.classList.toggle('active', i === idx));
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => { currentImg = img; renderBefore(); applyPipeline(); };
+  img.src = SAMPLES[idx].url;
+}
+
+function renderBefore() {
+  const wrap = document.getElementById('before-wrap');
+  wrap.innerHTML = '';
+  const c = document.createElement('canvas');
+  c.width = currentImg.naturalWidth; c.height = currentImg.naturalHeight;
+  c.getContext('2d').drawImage(currentImg, 0, 0);
+  wrap.appendChild(c);
+  document.getElementById('before-info').textContent = c.width + ' × ' + c.height;
+}
+
+function imgToCanvas(img) {
+  const c = document.createElement('canvas');
+  c.width = img.naturalWidth; c.height = img.naturalHeight;
+  c.getContext('2d').drawImage(img, 0, 0);
+  return c;
+}
+function centerCrop(src, tH, tW) {
+  const cH = src.height > tH ? tH : src.height;
+  const cW = src.width  > tW ? tW : src.width;
+  const out = document.createElement('canvas');
+  out.width = cW; out.height = cH;
+  out.getContext('2d').drawImage(src,
+    Math.floor((src.width-cW)/2), Math.floor((src.height-cH)/2),
+    cW, cH, 0, 0, cW, cH);
+  return out;
+}
+function randomFlip(src, p) {
+  const out = document.createElement('canvas');
+  out.width = src.width; out.height = src.height;
+  const ctx = out.getContext('2d');
+  const fH = Math.random() < p, fV = Math.random() < p;
+  ctx.save();
+  if (fH) { ctx.translate(out.width, 0);  ctx.scale(-1,  1); }
+  if (fV) { ctx.translate(0, out.height); ctx.scale( 1, -1); }
+  ctx.drawImage(src, 0, 0); ctx.restore();
+  return out;
+}
+function padding(src, tH, tW, color) {
+  const oH = Math.max(src.height, tH), oW = Math.max(src.width, tW);
+  const out = document.createElement('canvas');
+  out.width = oW; out.height = oH;
+  const ctx = out.getContext('2d');
+  ctx.fillStyle = color; ctx.fillRect(0, 0, oW, oH);
+  ctx.drawImage(src, Math.floor((oW-src.width)/2), Math.floor((oH-src.height)/2));
+  return out;
+}
+function applyPipeline() {
+  if (!currentImg) { selectImage(0); return; }
+  let c = imgToCanvas(currentImg);
+  if (document.getElementById('cc-on').checked)
+    c = centerCrop(c, +document.getElementById('cc-h').value||256, +document.getElementById('cc-w').value||256);
+  if (document.getElementById('rf-on').checked)
+    c = randomFlip(c, +document.getElementById('rf-p').value);
+  if (document.getElementById('pad-on').checked)
+    c = padding(c, +document.getElementById('pad-h').value||300, +document.getElementById('pad-w').value||300,
+                document.getElementById('pad-color').value);
+  const wrap = document.getElementById('after-wrap');
+  wrap.innerHTML = ''; c.style.width='100%'; c.style.height='auto';
+  wrap.appendChild(c);
+  document.getElementById('after-info').textContent = c.width + ' × ' + c.height;
+}
+selectImage(0);
+
+/* ── Oxford-IIIT-Pet inference ────────────────────────────────────── */
+let oxfordModel = null, oxfordMeta = null;
+
+async function initOxford() {
+  const statusEl = document.getElementById('oxford-status');
+  try {
+    [oxfordModel, oxfordMeta] = await Promise.all([
+      tf.loadGraphModel('models/oxford_pet/model.json'),
+      fetch('test_data/oxford_pet/labels.json').then(r => r.json())
+    ]);
+    buildOxfordGrid();
+    statusEl.style.display = 'none';
+    document.getElementById('oxford-grid').style.display    = 'grid';
+    document.getElementById('oxford-predict').style.display = 'grid';
+    runOxford(0);
+  } catch(e) {
+    console.error('Oxford model error:', e);
+    statusEl.textContent = 'Error: ' + e.message;
+  }
+}
+
+function buildOxfordGrid() {
+  const grid = document.getElementById('oxford-grid');
+  oxfordMeta.samples.forEach((s, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'test-thumb';
+    btn.onclick = () => runOxford(i);
+    const img = document.createElement('img');
+    img.src = 'test_data/oxford_pet/' + s.file; img.alt = s.label;
+    btn.appendChild(img); grid.appendChild(btn);
+  });
+}
+
+async function runOxford(idx) {
+  if (!oxfordModel) return;
+  document.querySelectorAll('#oxford-grid .test-thumb').forEach((b, i) =>
+    b.classList.toggle('active', i === idx));
+
+  const sample = oxfordMeta.samples[idx];
+  const imgEl  = document.getElementById('oxford-img');
+  imgEl.src    = 'test_data/oxford_pet/' + sample.file;
+
+  document.getElementById('oxford-predict-label').textContent = 'Running\u2026';
+  document.getElementById('oxford-bars').innerHTML = '';
+  document.getElementById('oxford-gt').style.display = 'none';
+
+  await new Promise(res => {
+    if (imgEl.complete && imgEl.naturalHeight) res(); else imgEl.onload = res;
+  });
+
+  const tensor = tf.tidy(() =>
+    tf.browser.fromPixels(imgEl)
+      .resizeBilinear([224,224]).toFloat().div(127.5).sub(1).expandDims(0)
+  );
+  const probs = Array.from(await oxfordModel.executeAsync(tensor).then(t => t.data()));
+  tensor.dispose();
+
+  const ranked = probs
+    .map((p, i) => ({ prob: p, label: oxfordMeta.classes[i] }))
+    .sort((a, b) => b.prob - a.prob).slice(0, 3);
+
+  const barsEl = document.getElementById('oxford-bars');
+  barsEl.innerHTML = '';
+  ranked.forEach((r, i) => {
+    const pct = (r.prob * 100).toFixed(1);
+    const row = document.createElement('div');
+    row.className = 'pred-bar-row';
+    row.innerHTML = `
+      <div class="pred-bar-meta">
+        <span class="pred-name">${r.label}</span>
+        <span class="pred-pct">${pct}%</span>
+      </div>
+      <div class="pred-bar-track">
+        <div class="pred-bar-fill ${i===0?'rank-1':''}" style="width:${pct}%"></div>
+      </div>`;
+    barsEl.appendChild(row);
+  });
+
+  document.getElementById('oxford-predict-label').textContent = 'Top\u20113 predictions';
+  const correct = ranked[0].label === sample.label;
+  document.getElementById('oxford-gt-val').textContent  = sample.label;
+  document.getElementById('oxford-gt-icon').textContent = correct ? '\u2713' : '\u2717';
+  document.getElementById('oxford-gt-icon').className   = correct ? 'gt-correct' : 'gt-wrong';
+  document.getElementById('oxford-gt').style.display    = 'flex';
+}
+
+initOxford();
+</script>
+
+</body>
+</html>

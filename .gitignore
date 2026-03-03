@@ -8,8 +8,8 @@
 *.sav
 *.feather
 
-# Model files
-*.keras
+# Model files (raw Keras — large; only demo/models/ TF.js files are committed)
+models/
 
 # Python files
 *.pyc

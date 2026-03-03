@@ -1,0 +1,123 @@
+{
+  "classes": [
+    "Abyssinian",
+    "Bengal",
+    "Birman",
+    "Bombay",
+    "British_Shorthair",
+    "Egyptian_Mau",
+    "Maine_Coon",
+    "Persian",
+    "Ragdoll",
+    "Russian_Blue",
+    "Siamese",
+    "Sphynx",
+    "american_bulldog",
+    "american_pit_bull_terrier",
+    "basset_hound",
+    "beagle",
+    "boxer",
+    "chihuahua",
+    "english_cocker_spaniel",
+    "english_setter",
+    "german_shorthaired",
+    "great_pyrenees",
+    "havanese",
+    "japanese_chin",
+    "keeshond",
+    "leonberger",
+    "miniature_pinscher",
+    "newfoundland",
+    "pomeranian",
+    "pug",
+    "saint_bernard",
+    "samoyed",
+    "scottish_terrier",
+    "shiba_inu",
+    "staffordshire_bull_terrier",
+    "wheaten_terrier",
+    "yorkshire_terrier"
+  ],
+  "samples": [
+    {
+      "file": "000.jpg",
+      "label": "Persian"
+    },
+    {
+      "file": "001.jpg",
+      "label": "pug"
+    },
+    {
+      "file": "002.jpg",
+      "label": "wheaten_terrier"
+    },
+    {
+      "file": "003.jpg",
+      "label": "Bombay"
+    },
+    {
+      "file": "004.jpg",
+      "label": "Bengal"
+    },
+    {
+      "file": "005.jpg",
+      "label": "great_pyrenees"
+    },
+    {
+      "file": "006.jpg",
+      "label": "Birman"
+    },
+    {
+      "file": "007.jpg",
+      "label": "beagle"
+    },
+    {
+      "file": "008.jpg",
+      "label": "Birman"
+    },
+    {
+      "file": "009.jpg",
+      "label": "scottish_terrier"
+    },
+    {
+      "file": "010.jpg",
+      "label": "chihuahua"
+    },
+    {
+      "file": "011.jpg",
+      "label": "german_shorthaired"
+    },
+    {
+      "file": "012.jpg",
+      "label": "samoyed"
+    },
+    {
+      "file": "013.jpg",
+      "label": "saint_bernard"
+    },
+    {
+      "file": "014.jpg",
+      "label": "British_Shorthair"
+    },
+    {
+      "file": "015.jpg",
+      "label": "scottish_terrier"
+    },
+    {
+      "file": "016.jpg",
+      "label": "Russian_Blue"
+    },
+    {
+      "file": "017.jpg",
+      "label": "boxer"
+    },
+    {
+      "file": "018.jpg",
+      "label": "great_pyrenees"
+    },
+    {
+      "file": "019.jpg",
+      "label": "Siamese"
+    }
+  ]
+}
