@@ -1,235 +1,358 @@
-# Object-Oriented Programming for AI - final project requirements
+<div align="center">
 
-In this final project, you will be required to implement a complex application in Python using the OOP concept explained in the course.
-The project will need to contain the following elements:
+# DataKit
+### *Python Library for ML Dataset Loading, Batching & Preprocessing*
 
-- An implementation of a hierarchy of classes to manage datasets, mainly with Machine Learning as an end goal.
-- A dataset wrapper, called `BatchLoader`, which handles the creation of batches of data for training a model.
-- A set of preprocessing tools for image and audio data.
+<p><em>Clean OOP design for image and audio ML pipelines — with live in-browser demo</em></p>
 
+![Status](https://img.shields.io/badge/status-complete-success?style=flat)
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat&logo=python&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-46%20passing-success?style=flat&logo=pytest&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-blue?style=flat)
 
-This project is designed to be carried out in pairs.
-The way you split the load is up to you; however, you should ensure that both team members' load is approximately equal.
+<p><em>Built with the tools and technologies:</em></p>
 
-The final product will need to be submitted as a **private** GitHub repository with the following structure:
+![NumPy](https://img.shields.io/badge/NumPy-1.x-013243?style=flat&logo=numpy&logoColor=white)
+![Pillow](https://img.shields.io/badge/Pillow-10.x-blue?style=flat)
+![Librosa](https://img.shields.io/badge/Librosa-0.10-green?style=flat)
+![TensorFlow](https://img.shields.io/badge/TensorFlow-2.x-FF6F00?style=flat&logo=tensorflow&logoColor=white)
+![Sphinx](https://img.shields.io/badge/Sphinx-docs-0a507a?style=flat&logo=sphinx&logoColor=white)
+![Pytest](https://img.shields.io/badge/pytest-7.x-0A9EDC?style=flat&logo=pytest&logoColor=white)
 
-- A `report.md` file at the root of your folder. The readme is to function as a submission report and a documentation for the usage of your code.
-  - Here you should specify your implementation choices (e.g., why something has been implemented as a private/public attribute instead of a method argument, why you decided to create an intermediate class, why you chose to have an attribute public instead of private...).
-  - Also, at the beginning of the report, you should detail how the workload was split between the two members.
-- A `requirements.txt` file, listing all the dependencies of your project. This is to be formatted according to the [pip requirements file format](https://note.nkmk.me/en/python-pip-install-requirements/).
-- A folder `src` containing all of the code for your library.
-- A `main.py` file at the root of your folder. Here you should showcase an example of usage of your library.
+**Datasets Used:**
+![Oxford Pet](https://img.shields.io/badge/Oxford--IIIT--Pet-37%20breeds-orange?style=flat)
+![UTKFace](https://img.shields.io/badge/UTKFace-age%20regression-blue?style=flat)
+![ESC-50](https://img.shields.io/badge/ESC--50-50%20sounds-green?style=flat)
+![BallroomData](https://img.shields.io/badge/BallroomData-10%20genres-purple?style=flat)
 
-## Git instructions
+---
 
-Please clone the project to your local machine (URL can be found under the green "Code" button):
+### 📊 OOP for AI — Final Project 2025-2026
+**Raphael MARTIN** | ECE Paris — B3 Data & IA
+
+**[🌐 Live Demo](https://datakit.deepskal.com) · [📚 Documentation](https://le-skal.github.io/datakit/)**
+
+</div>
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Key Stats](#key-stats)
+- [Library Structure](#library-structure)
+  - [Dataset Hierarchy](#dataset-hierarchy)
+  - [BatchLoader](#batchloader)
+  - [Preprocessing Transforms](#preprocessing-transforms)
+- [Design Decisions](#design-decisions)
+- [Datasets](#datasets)
+- [Installation](#installation)
+- [Usage](#usage)
+  - [Datasets](#datasets-1)
+  - [BatchLoader](#batchloader-1)
+  - [Preprocessing Pipeline](#preprocessing-pipeline)
+- [Results](#results)
+- [Testing](#testing)
+- [Documentation](#documentation)
+- [Interactive Demo](#interactive-demo)
+- [Project Structure](#project-structure)
+
+---
+
+## Overview
+
+DataKit is a Python library for loading, batching, and preprocessing image and audio datasets, built from scratch with clean object-oriented design as a final project for the *OOP for AI* course.
+
+The library covers:
+- A **dataset hierarchy** with abstract base classes, supporting labeled/unlabeled datasets, lazy/eager loading, CSV and folder-hierarchy label formats, and regression/classification tasks
+- A **BatchLoader** that wraps any dataset and yields batches via a generator, with optional shuffling and last-batch control
+- Eight **preprocessing transforms** (four image, four audio) implemented as callable classes, composable via a `Pipeline`
+- Four **MobileNetV2 models** fine-tuned using the DataKit pipeline, exportable to TensorFlow.js for in-browser inference
+
+---
+
+## Key Stats
+
+| | |
+|---|---|
+| Images | 9,390 (Oxford-IIIT-Pet + UTKFace) |
+| Audio clips | 2,698 (ESC-50 + BallroomData) |
+| Tests passing | 46 |
+| Oxford-IIIT-Pet val accuracy | ~90% |
+| UTKFace age estimation MAE | ~6 years |
+
+---
+
+## Library Structure
+
+### Dataset Hierarchy
+
+```
+Dataset (ABC)
+├── LabeledDataset (ABC)
+│   ├── ImageDataset
+│   └── AudioDataset
+└── UnlabeledDataset (ABC)
+    ├── UnlabeledImageDataset
+    └── UnlabeledAudioDataset
+```
+
+`Dataset`, `LabeledDataset`, and `UnlabeledDataset` are abstract base classes that enforce implementation of `_scan_files()` and `_load_file()` in every concrete subclass. All attributes are private and exposed via `@property`.
+
+Both `ImageDataset` and `AudioDataset` support two storage layouts:
+
+- **CSV mode** (`labels_file` provided): flat folder of files + external CSV mapping `filename → label`. Used for regression (UTKFace ages, Ballroom BPM) and flat classification (ESC-50, Oxford breeds).
+- **Folder mode** (`labels_file=None`): one subdirectory per class, label = directory name. Used for BallroomData genre classification.
+
+### BatchLoader
+
+`BatchLoader` wraps any `Dataset` and yields batches via a generator (`yield`), loading data from the dataset only when each batch is consumed. Shuffling is applied to indices only — no data is duplicated. The `drop_last` flag discards the final incomplete batch when needed.
+
+### Preprocessing Transforms
+
+```
+Transform (ABC)
+├── CenterCrop          (image)
+├── RandomCrop          (image)
+├── RandomFlip          (image)
+├── Padding             (image)
+├── MelSpectrogram      (audio: (y,sr) → np.ndarray)
+├── AudioRandomCrop     (audio: (y,sr) → (y,sr))
+├── Resample            (audio: (y,sr) → (y,sr))
+├── PitchShift          (audio: (y,sr) → (y,sr))
+└── Pipeline            (any → any, chains transforms sequentially)
+```
+
+All transforms are callable classes: hyperparameters are set at construction time and `__call__` receives only the data. `Pipeline` uses variadic `*transforms` and applies them left to right. Note that `MelSpectrogram` changes the data type from `(y, sr)` to a 2D `np.ndarray` — it should always be placed last in an audio pipeline.
+
+---
+
+## Design Decisions
+
+**ABCs prevent incomplete instantiation.** Using `abc.ABC` ensures every concrete class implements the required interface, and makes the hierarchy self-documenting.
+
+**All attributes are private, exposed via `@property`.** No setters are provided — datasets are treated as immutable once constructed.
+
+**`split()` shuffles indices, not data.** `_create_subset()` uses `object.__new__()` to bypass `__init__` and directly copies the relevant slices, avoiding filesystem re-scans and data duplication.
+
+**CSV label auto-casting (int → float → str).** Labels are automatically cast to the most specific numeric type, transparently supporting both regression and classification from the same code path.
+
+**Pillow over OpenCV.** Pillow's `.convert("RGB")` guarantees RGB output regardless of source format, avoiding the BGR-vs-RGB pitfall.
+
+**Audio `_load_file` returns `(np.ndarray, int)`.** Keeping the sample rate alongside the waveform is mandatory for all librosa preprocessing functions.
+
+**Type checks centralised in `src/utils.py`.** Shared utility functions avoid duplication without forcing an artificial inheritance relationship across unrelated classes.
+
+---
+
+## Datasets
+
+| Dataset | Task | Size | Labels |
+|---|---|---|---|
+| Oxford-IIIT-Pet | Classification | 7,390 images | 37 breeds (CSV) |
+| UTKFace | Regression | 23,708 images | Age in years (CSV) |
+| ESC-50 | Classification | 2,000 audio clips | 50 sound categories (CSV) |
+| BallroomData | Classification | 698 audio clips | 10 dance genres (folder hierarchy) |
+| BallroomData/Waltz | Regression | 110 audio clips | BPM (CSV) |
+
+---
+
+## Installation
 
 ```bash
-git clone <URL>
+git clone https://github.com/le-skal/datakit
+cd datakit
+pip install -r requirements.txt
 ```
 
-If you want to push your changes to GitHub:
+To build the HTML documentation locally:
 
 ```bash
-git add file.py         # to add one file
-git add src/            # to add everything under 'src/'
-git add .               # to add all changes
-git status              # to check what you are pushing
-git commit -m "this is a commit"
-git push
+pip install sphinx sphinx-rtd-theme
+sphinx-build -b html docs/ docs/_build/html
 ```
 
-For any Git-related issues, please go to the pull request that is open and tag @oop-otoz with your question in the comments.
+---
 
-## Datasets (3 pts.)
+## Usage
 
-You will need to implement a hierarchy of classes to manage datasets.
-
-- [x] The implementation will need to contain a base class, defining all the methods and attributes common to all the datasets.
-- [x] Datasets should have two variants: one including both data and labels, the other including only the data (which can be used, e.g., for testing when there are no labels available).
-- [x] All datasets should include a `root` attribute, which identifies the root location where the data is stored into the disk. Each data point (e.g., an image, an audio file) should be stored as a single file in the disk, with the name of the file uniquely identifying the data point.
-- [x] The datasets should return the number of datapoints in it if passed to the `len` built-in function.
-- [x] Datasets can be used for both regression and classification.
-
-  * In the case of **regression**, the data should be stored on disk in the `root` folder (and not any subfolder), with the labels stored in a separate file outside of the `root` folder.
-    The labels should be stored in a single file **outside of `root`**, with the file in a `.csv` format.
-    Each line contains information about a data point: the first column contains the filename and the second column containing the corresponding label.
-  * In the case of **classification**, there are two possible formats:
-
-    1.  As in the case of regression, the data is stored in a single folder, with the labels stored in a separate file outside of the `root` folder, in a `.csv` file formatted as above.
-    2.  The data is stored in a folder hierarchy, with each subfolder containing the data for a single class. For instance, if we have three categories, the data is stored in a folder hierarchy as follows:
-
-        ```
-        root
-        ├── class_1
-        │   ├── data_1
-        │   ├── data_2
-        │   └── data_3
-        ├── class_2
-        │   ├── data_4
-        │   ├── data_5
-        │   └── data_6
-        └── class_3
-            ├── data_7
-            ├── data_8
-            └── data_9
-        ```
-
-        Notice that, in this specific configuration, you don't need a file with labels, since the labels are already encoded in the folder hierarchy.
-
-        You should account for both of these configurations in your implementation.
-
-- [x] The datasets should be able to load the data from the disk, both in a **lazy** and in an **eager** fashion. The eager implementation should **load all the data into memory at once**, while the lazy implementation should store only the data path and **load the data from the disk only when needed**.
-      _Notice that this implementation does not necessarily need to be implemented with the usage of iterators or generators._
-
-- [x] In all cases, the data should be accessed using the subsetting operator (e.g., `dataset[i]`), which should return (using the data structure you prefer) the data at the specified index. In the case of a dataset with labels, you should return both the data and the corresponding label. If the dataset has no labels, you should return only the data.
-
-- [x] The datasets should have a method for **splitting** the data (and labels, if applicable) into training and test sets. The user should be able to split the data by specifying the percentage of data to be used for training. This functionality should return two datasets as output (i.e. `train` and `test`).
-
-- [x] You should create at least two datasets with these characteristics, one handling **images**, the other handling **audio files**.
-
-  * For handling images, you can use one of many Python libraries for image processing, such as [Pillow](https://pillow.readthedocs.io/en/stable/) or [OpenCV](https://opencv.org/). Notice that OpenCV, while faster than Pillow, is using the BGR format for images, while Pillow is using the standard RGB format. You should be careful that images loaded into the datasets are in the RGB format.
-
-  * For handling audio files, you can use [Librosa](https://librosa.org/doc/latest/index.html), which is a Python library for audio processing. Notice that, for preprocessing reason, your data will be composed of a tuple (audio time series, sampling rate), which are the two fundamental inputs to Librosa preprocessing functions.
-
-### BatchLoader class (3 pts.)
-
-The BatchLoader will be constructed on top of a dataset, and will be responsible for creating batches of data for training a model using, e.g., Stochastic Gradient Descent.
-
-- [x] The BatchLoader should be able to create batches of data of a specified size.
-- [x] The user should specify whether they want the batches to be created in a **random** or in a **sequential** fashion:
-
-  * In the case of **random** batches, the BatchLoader should create batches of data by randomly shuffling the order of the data points and then creating batches of the specified size.
-  * In the case of **sequential** batches, no shuffling should be performed, and the batches should be created in the original order of the data points.
-
-  Notice that, if `dataset_size // batch_size != 0` (i.e., the batch size is not a divisor of the dataset size), the last batch will be smaller than the specified batch size. You should let the user decide whether to use or to discard this last batch in case.
-
-  ![](img/batches.png)
-
-  The image above summarizes the process that the BatchLoader is tasked with carrying out, both for the random batches (shuffling is performed) and sequential batches (shuffling is not performed).
-
-- [x] Within the BatchLoader, the batches are to be created only using the **indices** of the data points, and the data composing the batch should be loaded from the disk only when needed using an iterator.
-
-- [x] If passed as argument to the `len` method, the BatchLoader should return the number of batches that can be created from the dataset with the specific batch size.
-
-### Data preprocessing (3 pts.)
-
-In this step, you are required to prepare at least **four** data preprocessing techniques as **callable classes** using OOP principles.
-
-Have an ABC describing the generic behavior of the preprocessing tool.
-
-Define your preprocessing technique as a class:
+### Datasets
 
 ```python
-class MyPreprocessingTechnique(PreprocessingTechniqueABC):
-  def __init__(self, hyperparameter_1, hyperparameter_2):
-    ...
+from src.image_dataset import ImageDataset, UnlabeledImageDataset
+from src.audio_dataset import AudioDataset, UnlabeledAudioDataset
+
+# Labeled image dataset — classification, lazy
+ds = ImageDataset("dataset/Oxford-IIIT-Pet", lazy=True,
+                  labels_file="dataset/oxford_labels.csv")
+img, label = ds[0]          # (np.ndarray shape (H,W,3), str)
+train, test = ds.split(0.8)
+
+# Labeled image dataset — regression, lazy
+ds_age = ImageDataset("dataset/UTKFace/UTKFace", lazy=True,
+                      labels_file="dataset/utk_labels.csv")
+img, age = ds_age[0]        # (np.ndarray, int)
+
+# Unlabeled image dataset
+ds_u = UnlabeledImageDataset("dataset/Oxford-IIIT-Pet", lazy=True)
+img = ds_u[0]               # np.ndarray
+
+# Audio dataset — folder hierarchy, classification
+ds_audio = AudioDataset("dataset/BallroomData", lazy=True)
+(y, sr), genre = ds_audio[0]
+
+# Eager loading (all data loaded into RAM at construction)
+ds_eager = ImageDataset("dataset/Oxford-IIIT-Pet", lazy=False,
+                        labels_file="dataset/oxford_labels.csv")
 ```
 
-The preprocessing technique should be used in this way:
+### BatchLoader
 
 ```python
-my_preproc_tech = MyPreprocessingTechnique(hyperparameter_1, hyperparameter_2)
-new_data = my_preproc_tech(old_data)
+from src.batch_loader import BatchLoader
+
+loader = BatchLoader(ds, batch_size=32, shuffle=True, drop_last=False)
+print(len(loader))   # number of batches
+
+for batch in loader:
+    # batch is a list of (img, label) tuples
+    pass
 ```
 
-- [x] All the hyperparameters of these techniques---i.e., arguments that the user can specify for the transformations---**should be passed as arguments in the initialization**. The preprocessing technique, when called, **should have only data as arguments**, as in the snippet above.
+### Preprocessing Pipeline
 
-- [x] **Two classes** need to be for images.
-- [x] **Two classes** need to be for audio.
-- [x] In addition, you should create a datatype-agnostic preprocessing class that is able to sequentially perform multiple preprocessing steps.
-      See the following subsections for more info.
+```python
+from src.preprocessing import (
+    Pipeline, CenterCrop, RandomFlip, Padding,
+    AudioRandomCrop, Resample, MelSpectrogram
+)
 
-#### Image preprocessing
+# Image pipeline
+img_pipeline = Pipeline(
+    CenterCrop(256, 256),
+    RandomFlip(p=0.5),
+    Padding(300, 300, color=(128, 128, 128)),
+)
+processed = img_pipeline(img)   # shape (300, 300, 3)
 
-Pick at least 2 of these:
+# Audio pipeline
+audio_pipeline = Pipeline(
+    AudioRandomCrop(duration=5.0),
+    Resample(target_sr=22050),
+    MelSpectrogram(n_mels=128),
+)
+spectrogram = audio_pipeline((y, sr))   # shape (128, T)
 
-For implementing these classes, use `opencv` (thus images will be represented by `numpy` arrays) or `Pilllow` (images can be representable by arrays by passing them to a `numpy.array` constructor).
+# Pipeline applied over a BatchLoader
+for batch in loader:
+    processed_batch = [img_pipeline(img) for img, label in batch]
+```
 
-1. Center crop: given an input image of any size `H` × `W`, return a cropped image of size `height` × `width`, whereas the center coordinates of the original image and the cropped image coincide. If the specified `height` **and** `width` are greater than the original image, the crop is not performed. In case, e.g., `H>height`, but `W<width`, then the crop is performed only on the height dimension. Below is an example of a 200 × 200 px center crop. After identifying the coordinates of the crop, you should return the image inside the red rectangle.
+---
 
-![](img/ccrop.jpg)
+## Results
 
-2. Random crop: given an input image of any size, return a cropped image of size `height` × `width`, whose coordinates of the top-left corner of the crop are sampled randomly. Be careful not to go out of the bounds of the original images. If the specified height and width are greater than the original image, the crop is not performed. Below is an example of a 200 × 200 px random crop. After identifying the coordinates of the crop, you should return the image inside the red rectangle.
+### Datasets
 
-![](img/rcrop.jpg)
+```
+Oxford-IIIT-Pet — 7,390 images, 37 classes, split 80/20 → train=5912 / test=1478
+UTKFace         — 23,708 images, age regression
+ESC-50          — 2,000 audio clips, 50 classes
+BallroomData    — 698 audio clips, 10 genres, split 80/20 → train=558 / test=140
+```
 
-3. Random patching: given an input image of any size, fill a window of the image with a pre-specified color. The top-left coordinate of this window is sampled randomly within the image. Let the user decide color, height and width of this window at initialization. Below is an example of random patching of size 30 × 39.
+### Sample images (Oxford-IIIT-Pet)
 
-![](img/patch.jpg)
+![Sample images](img/results/sample_images.png)
 
-4. Padding: given an input image of any size `H` × `W`, if the image is smaller than a target height `height` or a target width `width`, fill the borders with a user pre-specified color until the image is of size `height` × `width`. In example below, the image was padded with blue bands up to a size of 400 × 500, whereas the starting size was 316 × 474.
+### Image preprocessing pipeline
 
-![](img/pad.jpg)
+`CenterCrop(256×256) → RandomFlip(p=0.5) → Padding(300×300)`
 
-5. Random flip: the image is flipped horizontally and vertically with a given probability `p`, specified by the user. Sample independently the event of horizontal and vertical flipping. In the example below, the image used before was flipped along its horizontal axis.
+![Image preprocessing](img/results/sample_preprocessing_images.png)
 
-![](img/flip.jpg)
+### Audio preprocessing pipeline
 
-#### Audio preprocessing
+`AudioRandomCrop(3s) → Resample(22050 Hz) → MelSpectrogram(128 bands)`
 
-Pick at least 2 of these.
+![Audio preprocessing](img/results/sample_preprocessing_audio.png)
 
-1. Mel spectrogram: given an input audio track and a sampling rate, it should return a mel spectrogram of the given audio track. Mel spectrograms are a summary of the intensity of each frequency (on the mel scale, which is a human-perceptually meaningful sound frequency scale) of sound on each specific timestep of the audio track. Usually, they are used as input to Convolutional Neural Networks for audio data. You can see more info in [this video](https://www.youtube.com/watch?v=9GHCiiDLHQ4).
+### Fine-tuned models
 
-![](img/mel.png)
+| Model | Task | Dataset | Val Performance |
+|---|---|---|---|
+| MobileNetV2 | Breed classification | Oxford-IIIT-Pet | ~90% accuracy |
+| MobileNetV2 | Age estimation | UTKFace | MAE ~6 years |
+| MobileNetV2 | Sound classification | ESC-50 | ~65% accuracy |
+| MobileNetV2 | Genre classification | BallroomData | ~70% accuracy |
 
-2. Random cropping: given an input audio track and a sampling rate, crop the audio sample on a random starting point for a given duration of `n` seconds. The output should be an audio track of duration `n` seconds and the same sampling rate. If the track is shorter than `n` seconds, than the original track is returned. Notice that the duration of the track can be easily recovered using librosa `get_duration` function.
-3. Resampling: given an audio track and a sampling rate, it should return the resampled audio track with a different sampling rate. The operation is functionally similar to a resizing (scale up or down) of an image.
-4. Pitch shifting: given an audio track and a sampling rate, shift the pitch by a user-specified factor.
+---
 
-#### Sequential application of preprocessing functions (pipeline)
+## Testing
 
-As a last step, you should create a preprocessing class which implements a sequential pipeline of preprocessing steps.
-This class takes as input (in the constructor) a variable number of preprocessing steps and applies them sequentially in the order they were passed.
-Use the **variadic arguments** option to implement the constructor.
-This class should have the same structure as any other preprocessing class (i.e. a callable class).
-Be careful that the application of preprocessing steps may not be **commutative**: for instance, applying resampling on a Mel spectrogram will raise an error.
+46 tests in `tests/test_all.py`, runnable with:
 
-## Main (1 pt.)
+```bash
+pytest tests/ -v
+```
 
-In the main, you should showcase the usage of your library.
+No real dataset files are required — all tests use temporary directories with synthetic data generated on the fly.
 
-Notice that, for images and audio, showing means actually plotting some sample images, while, for audio, it refers to playing some sample audio tracks.
+| Test class | Coverage |
+|---|---|
+| `TestUtils` | `check_type`, `check_range`, `parse_labels_csv` |
+| `TestImageDatasetCSV` | `len`, `__getitem__`, `split`, eager mode, numeric labels, `IndexError` |
+| `TestImageDatasetFolder` | `len`, folder-name labels |
+| `TestUnlabeledImageDataset` | `len`, `__getitem__` return type |
+| `TestAudioDatasetCSV` | `len`, `__getitem__` types, `split` |
+| `TestAudioDatasetFolder` | `len`, folder-name labels |
+| `TestUnlabeledAudioDataset` | `__getitem__` return type |
+| `TestBatchLoader` | `len` with/without `drop_last`, batch sizes, total items, invalid batch size |
+| `TestPreprocessing` | Output shapes for all 8 transforms + Pipeline, edge cases |
 
-1. [x] Create an image dataset and an audio dataset. Show how you can access your data. You may also plot some images using the `matplotlib.pyplot.imshow` method.
+---
 
-- Showcase a dataset with and without labels.
-- Showcase a dataset for classification and regression.
-- Showcase a lazy and an eager dataloader
-- Build your datasets on top of whichever data you like (at least 100 data points); for the images, ensure that they have a size of at least 128 × 128 pixels.
-  - To look for datasets, you can use tools like [Kaggle](kaggle.com), [PapersWithCode](paperswithcode.com), [Google Datasets](https://datasetsearch.research.google.com/), and [the Irvine Machine Learning Repository](https://archive.ics.uci.edu/).
-  - You are even allowed to create your own dataset with the aforementioned requirements.
-  - Be careful about the labels: you want simple labels and you want to find examples of both regression and classification datasets:
-    - For images: object detection and segmentation are **not** image classification tasks; regression tasks can be, e.g., age estimation.
-    - For audio: be careful not to use datasets for speech-to-text or other Natural Language Processing-related tasks (the labels are more complicated in this case); regression tasks can be for example [tempo estimation](https://github.com/CPJKU/BallroomAnnotations/blob/master/README.md).
+## Documentation
 
-2. [x] Create a BatchLoader on top of two of these datasets (one for image, one for audio). Show its functionality with and without shuffling, with and without option to discard the last batch.
-3. [x] Create a pipeline of preprocessing steps, one for audio, one for images:
+HTML documentation generated from Google-style docstrings using Sphinx + autodoc + napoleon.
 
-- Show how you can apply the pipeline on top of a BatchLoader output.
-  ```python
-  pipeline = ...
-  for batch in batchloader:
-    # apply the pipeline for the data in the batch
-  ```
-- Show how you can apply the pipeline on top of a Dataset samples
-  ```python
-  pipeline = ...
-  for i in range(5):
-    newdata = pipeline(dataset[i])
-  ```
+**Hosted at: https://le-skal.github.io/datakit/**
 
+---
 
-# Generic indications
+## Interactive Demo
 
-Remind to always make use of the OOP concepts explained in the course:
+A live demo is hosted at **https://datakit.deepskal.com** — no backend or server-side computation.
 
-- [x] Always implement encapsulation accordingly. All the attributes should be private, and the user should be able to access them only through getters and setters. The usage of the `@property` decorator is preferrable. Motivate any choice of public methods and attributes in the report.
-  - Remember type hints. Use the pipe operator `|` to concatenate multiple types. For collections, write inside brackets the expected type of elements (e.g., `List[int]`).
-  - Also, don't forget about the return types (even when `None`).
-- [x] Make use of type checks. Code performing type checks should be better implemented as a private method, especially if repeated throughout the class.
-  - If you repeat code throughout different classes, you can either create an external class handling these tasks, or, if you have small utility functions (e.g., check int, convert something into something else) you can create a `util.py` script and put the functions there (outside the objects is fine as well); you may later access the functions as `from util import <utility_function>`
-- [x] Make use of docstrings. Providing a documentation as HTML files (converted from the docstrings using software such as [sphinx](https://www.sphinx-doc.org/en/master/) or [napoleon](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/)) will provide a bouns of +0.5 points to the final score.
-- [x] Take some moments for testing & refactoring. You don't need to use test-driven development for this project; nonetheless, you can still make use of specific tests to ensure that your code doesn't break when refactoring. Watch out for [code smells](https://refactoring.guru/refactoring/smells), especially bloaters [large class](https://refactoring.guru/smells/large-class) and [long method](https://refactoring.guru/smells/long-method).
-- [x] As previously mentioned, use your report to motivate your decisions, like usage of public attributes or methods, unusual/nonintuitive choices on type hints, decisions to use classes not indicated in the requirements, etc.
+**Preprocessing pipeline:** `CenterCrop`, `RandomFlip`, and `Padding` are reimplemented in JavaScript via the Canvas API. Toggle each transform on/off, adjust parameters in real time, and see before/after output with pixel dimensions.
+
+**In-browser ML inference:** All four MobileNetV2 models run client-side via TensorFlow.js (converted from SavedModel format). Click any held-out test image to run inference and compare the prediction against the ground truth.
+
+---
+
+## Project Structure
+
+```
+datakit/
+├── src/
+│   ├── utils.py              Type-check helpers, CSV parser, image loader
+│   ├── dataset.py            Dataset, LabeledDataset, UnlabeledDataset (ABCs)
+│   ├── image_dataset.py      ImageDataset, UnlabeledImageDataset
+│   ├── audio_dataset.py      AudioDataset, UnlabeledAudioDataset
+│   ├── batch_loader.py       BatchLoader
+│   └── preprocessing.py      Transform (ABC), image/audio transforms, Pipeline
+├── train/
+│   ├── train_oxford_pet.py
+│   ├── train_utkface.py
+│   ├── train_esc50.py
+│   ├── train_ballroom.py
+│   └── convert_to_tfjs.sh
+├── demo/
+│   └── index.html            Live demo (preprocessing + in-browser inference)
+├── docs/                     Sphinx documentation source
+├── tests/
+│   └── test_all.py           46 pytest tests
+├── main.py                   Showcase script
+├── requirements.txt
+└── report.md                 Implementation report
+```
